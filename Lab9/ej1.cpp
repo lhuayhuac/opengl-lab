@@ -10,11 +10,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// ============================================================
-// TEXTURAS (cargadas desde archivos externos)
-// ============================================================
-static GLuint texGrass, texBrick, texRoof, texWood, texLeaves, texDoor;  // Añadir texDoor
-// Función para cargar una textura desde archivo
+// TEXTURAS
+static GLuint texGrass, texBrick, texRoof, texWood, texLeaves, texDoor;
 static GLuint loadTexture(const char* filename) {
     int width, height, channels;
     unsigned char* data = stbi_load(filename, &width, &height, &channels, 3);
@@ -39,8 +36,6 @@ static GLuint loadTexture(const char* filename) {
     gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
     
     stbi_image_free(data);
-    
-    printf("Textura cargada: %s (%dx%d)\n", filename, width, height);
     return id;
 }
 
@@ -50,12 +45,10 @@ static void generateAllTextures() {
     texRoof   = loadTexture("texturas/tejas.jpg");
     texWood   = loadTexture("texturas/madera.jpg");
     texLeaves = loadTexture("texturas/hojas.jpg");
-    texDoor   = loadTexture("texturas/puerta.jpg");  // <-- Añadir esta línea
+    texDoor   = loadTexture("texturas/puerta.jpg");
 }
 
-// ============================================================
 // ESTADO GLOBAL
-// ============================================================
 int winW = 900, winH = 650;
 float camYaw    =  25.0f;
 float camPitch  = -20.0f;
@@ -66,9 +59,7 @@ bool useDirLight   = true;
 bool texturesOn    = true;
 bool wireframeMode = false;
 
-// ============================================================
 // MATERIALES
-// ============================================================
 enum MatID { MAT_TERRAIN, MAT_WALL, MAT_ROOF, MAT_TRUNK, MAT_LEAVES, MAT_DOOR };
 
 static void applyMaterial(MatID m) {
@@ -113,9 +104,7 @@ static void applyMaterial(MatID m) {
     glMaterialf (GL_FRONT_AND_BACK, GL_SHININESS, shin);
 }
 
-// ============================================================
 // ILUMINACIÓN
-// ============================================================
 static void setupLighting() {
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -144,10 +133,7 @@ static void setupLighting() {
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
 }
 
-// ============================================================
 // FUNCIONES DE DIBUJO CON TEXTURA
-// ============================================================
-
 static void quadTex(float x0,float y0,float z0, float u0,float v0,
                     float x1,float y1,float z1, float u1,float v1,
                     float x2,float y2,float z2, float u2,float v2,
@@ -235,10 +221,7 @@ static void drawTexturedCube(float size) {
     glEnd();
 }
 
-// ============================================================
 // DIBUJO DE LA ESCENA
-// ============================================================
-
 static void drawTerrain() {
     applyMaterial(MAT_TERRAIN);
     if (texturesOn && texGrass) {
@@ -246,6 +229,10 @@ static void drawTerrain() {
         glBindTexture(GL_TEXTURE_2D, texGrass);
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     }
+
+    // Desactivar culling temporalmente para ver el terreno por ambos lados
+    glDisable(GL_CULL_FACE);
+
     float H = 20.0f, rep = 8.0f;
     glBegin(GL_QUADS);
         glNormal3f(0.0f, 1.0f, 0.0f);
@@ -254,6 +241,10 @@ static void drawTerrain() {
         glTexCoord2f(rep, 0);   glVertex3f( H, 0.0f, -H);
         glTexCoord2f(0, 0);     glVertex3f(-H, 0.0f, -H);
     glEnd();
+
+    // Reactivar culling para el resto de objetos
+    glEnable(GL_CULL_FACE);
+
     if (texturesOn) glDisable(GL_TEXTURE_2D);
 }
 
@@ -263,7 +254,7 @@ static void drawDoor() {
     float doorY = 0.0f;
     float doorZ = -2.51f;
 
-    applyMaterial(MAT_DOOR);  // ← material de la puerta
+    applyMaterial(MAT_DOOR);
 
     if (texturesOn && texDoor) {
         glEnable(GL_TEXTURE_2D);
@@ -297,14 +288,10 @@ static void drawHouseWalls() {
     float doorH = 1.8f;
 
     glBegin(GL_QUADS);
-        // ============================================================
         // PARED FRONTAL (+Z) - COMPLETA
-        // ============================================================
         quadTex(-W, 0, D, 0, 0,  W, 0, D, repW, 0,  W, H, D, repW, repH,  -W, H, D, 0, repH);
 
-        // ============================================================
-        // PARED TRASERA (-Z) - CON HUECO (ORDEN CORREGIDO)
-        // ============================================================
+        // PARED TRASERA (-Z)
         // Panel izquierdo - ORDEN ANTIHORARIO visto desde -Z
         quadTex(-doorW/2, 0, -D, (W-doorW/2)/(2*W)*repW, 0,
                 -W, 0, -D, 0, 0,
@@ -323,9 +310,7 @@ static void drawHouseWalls() {
                 doorW/2, H, -D, (W+doorW/2)/(2*W)*repW, repH,
                 doorW/2, doorH, -D, (W+doorW/2)/(2*W)*repW, (H-doorH)/H*repH);
 
-        // ============================================================
         // PARED IZQUIERDA Y DERECHA
-        // ============================================================
         // Pared izquierda (-X)
         quadTex(-W,0,-D, 0,0, -W,0,D, repW,0,  -W,H,D, repW,repH, -W,H,-D, 0,repH);
         // Pared derecha (+X)
@@ -350,13 +335,13 @@ static void drawHouseRoof() {
 
     glBegin(GL_TRIANGLES);
         // Triángulo frontal (+Z)
-        glNormal3f(0.0f, 0.0f, -1.0f);  // Normal invertida para iluminación correcta
+        glNormal3f(0.0f, 0.0f, -1.0f);
         glTexCoord2f(0.5f, 1.0f); glVertex3f(cx, RH,  D);
         glTexCoord2f(0.0f, 0.0f); glVertex3f(-W, H,   D);
         glTexCoord2f(1.0f, 0.0f); glVertex3f( W, H,   D);
 
         // Triángulo trasero (-Z)
-        glNormal3f(0.0f, 0.0f, 1.0f);  // Normal invertida para iluminación correcta
+        glNormal3f(0.0f, 0.0f, 1.0f);
         glTexCoord2f(0.5f, 1.0f); glVertex3f(cx, RH, -D);
         glTexCoord2f(1.0f, 0.0f); glVertex3f( W, H,  -D);
         glTexCoord2f(0.0f, 0.0f); glVertex3f(-W, H,  -D);
@@ -383,7 +368,7 @@ static void drawHouseRoof() {
 static void drawHouse() {
     glPushMatrix();
     glTranslatef(0.0f, 0.0f, 0.0f);
-    drawHouseWalls();   // Ahora incluye la puerta
+    drawHouseWalls();
     drawHouseRoof();
     
     // Chimenea
@@ -433,10 +418,7 @@ static void drawTree(float tx, float tz) {
     glPopMatrix();
 }
 
-// ============================================================
 // GIZMO, HUD, CÁMARA, DISPLAY Y CONTROLES
-// ============================================================
-
 static void drawGizmo() {
     glDisable(GL_LIGHTING);
     glLineWidth(2.0f);
